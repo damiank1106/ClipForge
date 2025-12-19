@@ -1,0 +1,84 @@
+import Foundation
+import SwiftUI           // Required for PhotosPickerItem visibility
+import PhotosUI          // Required for the picker itself
+import AVFoundation
+import CoreTransferable  // Required for the .loadTransferable method
+
+enum MediaImportError: Error {
+    case failedToLoad
+    case failedToCopy
+}
+
+final class MediaImportService {
+
+    /// Imports a picked video into the app's Documents/ClipForge/Media folder and returns a MediaAsset.
+    @MainActor
+    func importVideo(from item: PhotosPickerItem) async throws -> MediaAsset {
+
+        // Preferred path: load a temporary file URL from PhotosPicker
+        if let sourceURL = try await item.loadTransferable(type: URL.self) {
+            let destURL = try copyIntoAppMediaFolder(sourceURL: sourceURL)
+            return try await buildMediaAsset(from: destURL)
+        }
+
+        // Fallback: sometimes URL loading can return nil; try Data (works for smaller files)
+        if let data = try await item.loadTransferable(type: Data.self) {
+            let destURL = try writeDataIntoAppMediaFolder(data: data, preferredExt: "mov")
+            return try await buildMediaAsset(from: destURL)
+        }
+
+        throw MediaImportError.failedToLoad
+    }
+
+    // MARK: - File ops
+
+    private func copyIntoAppMediaFolder(sourceURL: URL) throws -> URL {
+        let mediaDir = AppPaths.mediaDir
+        try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
+
+        let ext = sourceURL.pathExtension.isEmpty ? "mov" : sourceURL.pathExtension
+        let filename = "import_\(UUID().uuidString).\(ext)"
+        let destURL = mediaDir.appendingPathComponent(filename)
+
+        do {
+            if FileManager.default.fileExists(atPath: destURL.path) {
+                try FileManager.default.removeItem(at: destURL)
+            }
+            try FileManager.default.copyItem(at: sourceURL, to: destURL)
+            return destURL
+        } catch {
+            throw MediaImportError.failedToCopy
+        }
+    }
+
+    private func writeDataIntoAppMediaFolder(data: Data, preferredExt: String) throws -> URL {
+        let mediaDir = AppPaths.mediaDir
+        try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
+
+        let filename = "import_\(UUID().uuidString).\(preferredExt)"
+        let destURL = mediaDir.appendingPathComponent(filename)
+
+        do {
+            try data.write(to: destURL, options: [.atomic])
+            return destURL
+        } catch {
+            throw MediaImportError.failedToCopy
+        }
+    }
+
+    // MARK: - MediaAsset build
+
+    private func buildMediaAsset(from url: URL) async throws -> MediaAsset {
+        let avAsset = AVURLAsset(url: url)
+        let durationTime = try await avAsset.load(.duration)
+        let duration = durationTime.seconds.isFinite ? durationTime.seconds : 0
+
+        return MediaAsset(
+            url: url,
+            duration: duration,
+            displayName: url.deletingPathExtension().lastPathComponent,
+            relativePath: url.lastPathComponent
+        )
+    }
+}
+
