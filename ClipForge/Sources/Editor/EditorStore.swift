@@ -132,7 +132,7 @@ final class EditorStore: ObservableObject {
 
         do {
             for item in items {
-                let asset = try await mediaService.importVideo(from: item)
+                let asset = try await mediaService.importMedia(from: item)
                 mediaAssets.insert(asset, at: 0)
             }
         } catch {
@@ -402,4 +402,3 @@ final class EditorStore: ObservableObject {
         }
     }
 }
-

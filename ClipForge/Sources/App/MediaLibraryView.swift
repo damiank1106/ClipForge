@@ -8,8 +8,12 @@ struct MediaLibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
 
             // ✅ Reliable PhotosPicker in the sidebar
-            PhotosPicker(selection: $store.importSelection, maxSelectionCount: 10, matching: .videos) {
-                Label("Import Video", systemImage: "plus")
+            PhotosPicker(
+                selection: $store.importSelection,
+                maxSelectionCount: 10,
+                matching: .any(of: [.videos, .images])
+            ) {
+                Label("Import Media", systemImage: "plus")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderedProminent)
@@ -19,7 +23,7 @@ struct MediaLibraryView: View {
                 .padding(.top, 6)
 
             if store.mediaAssets.isEmpty {
-                Text("No media yet. Tap Import Video.")
+                Text("No media yet. Tap Import Media.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -49,4 +53,3 @@ struct MediaLibraryView: View {
         .padding()
     }
 }
-
