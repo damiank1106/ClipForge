@@ -31,7 +31,7 @@ struct RootView: View {
             Text(store.exportAlertMessage)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
 
                 // ✅ Reliable: real PhotosPicker control in the toolbar
                 PhotosPicker(
