@@ -18,11 +18,11 @@ struct ImportConfirmSheet: View {
                     .font(.system(size: 44))
                     .padding(.top, 8)
 
-                Text(count == 1 ? "Import this video?" : "Import \(count) videos?")
+                Text(count == 1 ? "Import this item?" : "Import \(count) items?")
                     .font(.title3)
                     .fontWeight(.semibold)
 
-                Text("On iPad, the Photos picker may use a checkmark + Done/Add. Select your video(s), tap Done/Add, then confirm here.")
+                Text("On iPad, the Photos picker may use a checkmark + Done/Add. Select your photo(s) or video(s), tap Done/Add, then confirm here.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -45,4 +45,3 @@ struct ImportConfirmSheet: View {
         }
     }
 }
-

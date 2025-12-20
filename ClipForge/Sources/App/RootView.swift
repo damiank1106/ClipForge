@@ -34,7 +34,11 @@ struct RootView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
 
                 // ✅ Reliable: real PhotosPicker control in the toolbar
-                PhotosPicker(selection: $store.importSelection, maxSelectionCount: 10, matching: .videos) {
+                PhotosPicker(
+                    selection: $store.importSelection,
+                    maxSelectionCount: 10,
+                    matching: .any(of: [.videos, .images])
+                ) {
                     Image(systemName: "plus")
                 }
 
@@ -71,4 +75,3 @@ struct RootView: View {
         }
     }
 }
-
