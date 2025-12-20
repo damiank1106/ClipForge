@@ -16,11 +16,19 @@ final class MediaImportService {
     @MainActor
     func importMedia(from item: PhotosPickerItem) async throws -> MediaAsset {
         let preferredExt = preferredExtension(for: item)
+        let logPrefix = "[Import] "
 
         // Preferred path: load a temporary file URL from PhotosPicker
         if let sourceURL = try await item.loadTransferable(type: URL.self) {
-            let destURL = try copyIntoAppMediaFolder(sourceURL: sourceURL, preferredExtension: preferredExt)
-            return try await buildMediaAsset(from: destURL)
+            let didAccess = sourceURL.startAccessingSecurityScopedResource()
+            defer { if didAccess { sourceURL.stopAccessingSecurityScopedResource() } }
+
+            do {
+                let destURL = try copyIntoAppMediaFolder(sourceURL: sourceURL, preferredExtension: preferredExt)
+                return try await buildMediaAsset(from: destURL)
+            } catch {
+                Log.warn("\(logPrefix)Copy from picker URL failed (\(error.localizedDescription)). Falling back to data.")
+            }
         }
 
         // Fallback: sometimes URL loading can return nil; try Data (works for smaller files)
@@ -29,6 +37,7 @@ final class MediaImportService {
             return try await buildMediaAsset(from: destURL)
         }
 
+        Log.error("\(logPrefix)Unable to retrieve URL or Data from picker selection.")
         throw MediaImportError.failedToLoad
     }
 
@@ -38,7 +47,7 @@ final class MediaImportService {
         let mediaDir = AppPaths.mediaDir
         try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
 
-        let ext = [sourceURL.pathExtension, preferredExtension].first(where: { !$0.isEmpty }) ?? "mov"
+        let ext = resolvedExtension(for: sourceURL, fallback: preferredExtension)
         let filename = "import_\(UUID().uuidString).\(ext)"
         let destURL = mediaDir.appendingPathComponent(filename)
 
@@ -76,10 +85,31 @@ final class MediaImportService {
             .first(where: { !$0.isEmpty }) ?? "mov"
     }
 
+    private func resolvedExtension(for sourceURL: URL, fallback: String) -> String {
+        if let type = try? sourceURL.resourceValues(forKeys: [.contentTypeKey]).contentType,
+           let ext = type.preferredFilenameExtension,
+           !ext.isEmpty {
+            return ext
+        }
+
+        if !sourceURL.pathExtension.isEmpty { return sourceURL.pathExtension }
+        return fallback.isEmpty ? "mov" : fallback
+    }
+
     private func buildMediaAsset(from url: URL) async throws -> MediaAsset {
-        let avAsset = AVURLAsset(url: url)
-        let durationTime = try await avAsset.load(.duration)
-        let duration = durationTime.seconds.isFinite ? durationTime.seconds : 0
+        let contentType = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
+        let isImage = contentType?.conforms(to: .image) ?? false
+
+        let duration: Double
+        if isImage {
+            // Images do not have a duration; default to a short still length.
+            duration = 5.0
+        } else {
+            let avAsset = AVURLAsset(url: url)
+            let durationTime = try await avAsset.load(.duration)
+            let seconds = durationTime.seconds
+            duration = (seconds.isFinite && seconds > 0) ? seconds : 0.01
+        }
 
         return MediaAsset(
             url: url,

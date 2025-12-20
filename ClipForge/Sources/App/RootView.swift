@@ -31,7 +31,7 @@ struct RootView: View {
             Text(store.exportAlertMessage)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
 
                 // ✅ Reliable: real PhotosPicker control in the toolbar
                 PhotosPicker(
@@ -41,6 +41,25 @@ struct RootView: View {
                 ) {
                     Image(systemName: "plus")
                 }
+
+                Button {
+                    store.newProject()
+                } label: {
+                    Image(systemName: "doc.badge.plus")
+                }
+
+                Button {
+                    store.saveProject()
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+
+                Button {
+                    Task { await store.generateCaptionsForSelection() }
+                } label: {
+                    Image(systemName: "captions.bubble")
+                }
+                .disabled(store.selectedClip == nil)
 
                 Button {
                     Task { await store.exportCurrentSequence() }
