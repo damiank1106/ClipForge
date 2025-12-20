@@ -19,8 +19,15 @@ final class MediaImportService {
 
         // Preferred path: load a temporary file URL from PhotosPicker
         if let sourceURL = try await item.loadTransferable(type: URL.self) {
-            let destURL = try copyIntoAppMediaFolder(sourceURL: sourceURL, preferredExtension: preferredExt)
-            return try await buildMediaAsset(from: destURL)
+            let didAccess = sourceURL.startAccessingSecurityScopedResource()
+            defer { if didAccess { sourceURL.stopAccessingSecurityScopedResource() } }
+
+            do {
+                let destURL = try copyIntoAppMediaFolder(sourceURL: sourceURL, preferredExtension: preferredExt)
+                return try await buildMediaAsset(from: destURL)
+            } catch {
+                Log.warn("Copy from picker URL failed (\(error.localizedDescription)). Falling back to data.")
+            }
         }
 
         // Fallback: sometimes URL loading can return nil; try Data (works for smaller files)

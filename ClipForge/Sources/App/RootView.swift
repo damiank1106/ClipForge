@@ -43,6 +43,25 @@ struct RootView: View {
                 }
 
                 Button {
+                    store.newProject()
+                } label: {
+                    Image(systemName: "doc.badge.plus")
+                }
+
+                Button {
+                    store.saveProject()
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+
+                Button {
+                    Task { await store.generateCaptionsForSelection() }
+                } label: {
+                    Image(systemName: "captions.bubble")
+                }
+                .disabled(store.selectedClip == nil)
+
+                Button {
                     Task { await store.exportCurrentSequence() }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
